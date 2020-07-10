@@ -3,6 +3,9 @@
     v-container
       v-row
         v-col(cols="12")
+          v-btn(nuxt to="/settings") 設定画面
+
+        v-col(cols="12")
           v-text-field(label="Search" clearable v-model="search" @input="inputSearch")
 
         v-col(cols="6")
@@ -12,13 +15,16 @@
               tbody
                 tr
                   td 最終更新日時
-                  td {{ $store.getters.getLastModified }}
+                  td {{ data.lastModified }}
+                  //- td {{ $store.getters.getLastModified }}
                 tr
                   td フォルダ数
-                  td {{ $store.getters.getFolders.length }}
+                  td {{ data.folders.length }}
+                  //- td {{ $store.getters.getFolders.length }}
                 tr
                   td ファイル数
-                  td {{ $store.getters.getFiles.length }}
+                  td {{ data.files.length }}
+                  //- td {{ $store.getters.getFiles.length }}
 
             v-card-actions
               v-spacer
@@ -69,6 +75,10 @@
 
 <script>
 import { remote, clipboard } from 'electron'
+const Store = require('electron-store')
+const db = new Store({
+  name: 'db'
+})
 
 export default {
   data() {
@@ -79,7 +89,12 @@ export default {
         files: [],
         status: false
       },
-      search: null
+      search: null,
+      data: {
+        folders: [],
+        files: [],
+        lastModified: '-'
+      }
     }
   },
   created() {
@@ -98,17 +113,28 @@ export default {
       }
     }, 500)
   },
+  mounted() {
+    this.reloadDataBase()
+  },
   methods: {
     openURL (url) {
       remote.shell.openExternal(url)
     },
-    fetchDirectories() {
-      this.$store.dispatch('fetchDirectories')
+    reloadDataBase() {
+      this.data.folders = db.get('folders', [])
+      this.data.files = db.get('files', [])
+      this.data.lastModified = db.get('lastModified', '-')
+    },
+    async fetchDirectories() {
+      await this.$store.dispatch('fetchDirectories')
+
+      this.reloadDataBase()
     },
     searchFolder(text) {
       // フォルダ
       let folders = []
-      this.$store.getters.getFolders.forEach(folder => {
+
+      this.data.folders.forEach(folder => {
         if (folder.indexOf(text) > -1) {
           folders.push(folder)
         }
@@ -128,7 +154,8 @@ export default {
     searchFile(text) {
       // ファイル検索
       let files = []
-      this.$store.getters.getFiles.forEach(file => {
+      // this.$store.getters.getFiles.forEach(file => {
+      this.data.files.forEach(file => {
         if (file.indexOf(text) > -1) {
           files.push(file)
         }
@@ -142,8 +169,6 @@ export default {
     },
     inputSearch() {
       // 暫定処理(3文字以上)
-      console.log(this.search)
-      
       if (this.search.length > 2) {
         this.searchFolder(this.search)
       }

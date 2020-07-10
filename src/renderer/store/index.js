@@ -1,12 +1,6 @@
 const { createClient } = require('webdav')
-
-const client = createClient(
-  'https://mukuta.synology.me:5006', // 暫定
-  {
-    username: 'ootsuka',
-    password: 'SystemIO_1125'
-  }
-)
+const Store = require('electron-store')
+const config = new Store()
 
 export const state = () => ({
   directories: [],
@@ -44,8 +38,17 @@ export const actions = {
     commit('clearDirectories')
     commit('toggleGettingStatus')
 
+    // TODO: Initialize
+    
+    const client = createClient(
+      config.get('server.host', 'localhost') + ':' + config.get('server.port', '8080'), {
+        username: config.get('server.username', 'username'),
+        password: config.get('server.password', 'password')
+      }
+    )
+
     console.log('get directories ...')
-    const directoryItems = await client.getDirectoryContents('/Books/漫画', {
+    const directoryItems = await client.getDirectoryContents(config.get('server.path', '/'), {
       deep: true
     })
 
@@ -64,7 +67,14 @@ export const actions = {
         files.push(directoryItems[i].basename)
       }
     }
-    console.log('complete')
+
+    // DBの保存
+    const db = new Store({
+      name: 'db'
+    })
+    db.set('folders', folders)
+    db.set('files', files)
+    db.set('lastModified', (new Date()).toLocaleString())
     
     commit('setLastModified', (new Date()).toLocaleString())
     commit('toggleGettingStatus')
