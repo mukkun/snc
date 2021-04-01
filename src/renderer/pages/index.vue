@@ -161,6 +161,8 @@ export default {
         }
       })
 
+      files.sort()
+
       this.clipboard.files = files
     },
     clearInfo() {
